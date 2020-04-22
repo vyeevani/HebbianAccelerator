@@ -10,6 +10,7 @@ class HebbianAccelerator extends Module {
     })
 
     // These ensure all output signals are driven.
+
     io.in.nodeq()
     io.out.noenq()
 
