@@ -26,13 +26,19 @@ def javacOptionsVersion(scalaVersion: String): Seq[String] = {
   }
 }
 
-name := "chisel-module-template"
+name := "hebbian_accelerator"
 
-version := "3.2.0"
+version := "0.1"
 
 scalaVersion := "2.12.10"
 
 crossScalaVersions := Seq("2.12.10", "2.11.12")
+
+libraryDependencies  ++= Seq(
+  "io.github.picnicml" %% "doddle-model" % "0.0.1-beta5",
+  // add optionally to utilize native libraries for a significant performance boost
+  "org.scalanlp" %% "breeze-natives" % "1.0"
+)
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
@@ -47,6 +53,7 @@ val defaultVersions = Map(
 
 libraryDependencies ++= Seq("chisel3","chisel-iotesters").map {
   dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) }
+
 
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 
