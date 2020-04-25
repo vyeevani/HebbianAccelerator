@@ -6,17 +6,21 @@ import chisel3.iotesters.{OrderedDecoupledHWIOTester}
 import scala.io.Source
 
 class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
-    val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(8.W, 8.BP), 8, Seq(784, 10))
+    val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(8.W, 8.BP), 8, Seq(1, 1))
     val device_under_test = Module(new HebbianAccelerator(dut_config))
     val c = device_under_test
     enable_all_debug = true
 
+    // inputEvent(c.io.in.bits -> 1)
+    // outputEvent(c.io.in.bits -> 0)
     for {
         i <- 0 to 10
     } {
         inputEvent(c.io.in.bits -> i)
         outputEvent(c.io.out.bits -> (i + 1))
     }
+
+
 
     // Load the testing data
     // var src = Source.fromFile("/Users/vineethyeevani/Desktop/hebbian_accelerator/datasets/mnist_train.csv")
