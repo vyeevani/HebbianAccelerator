@@ -1,11 +1,13 @@
 package hebbian 
 
 import chisel3._
+import chisel3.experimental._
 import chisel3.iotesters.{OrderedDecoupledHWIOTester}
 import scala.io.Source
 
 class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
-    val device_under_test = Module(new HebbianAccelerator)
+    val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(8.W, 8.BP), 8, Seq(784, 10))
+    val device_under_test = Module(new HebbianAccelerator(dut_config))
     val c = device_under_test
     enable_all_debug = true
 
@@ -26,5 +28,4 @@ class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
     // var test_data = data(0).split(",").map {
     //     i => i.toInt
     // } 
-
 }
