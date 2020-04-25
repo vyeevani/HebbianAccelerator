@@ -5,5 +5,6 @@ This accelerator does basic hebbian learning with a modified competitive step. T
 
 # Testing MNIST
 ```sh
+sbt
 > testOnly hebbian.HebbianMain
 ```
