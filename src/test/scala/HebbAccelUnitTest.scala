@@ -2,10 +2,10 @@ package hebbian
 
 import chisel3._
 import chisel3.experimental._
-import chisel3.iotesters.{OrderedDecoupledHWIOTester}
+import chisel3.iotesters.{OrderedDecoupledHWIOTester, PeekPokeTester}
 import scala.io.Source
 
-class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
+class HebbianAcceleratorDecoupledUnitTester extends OrderedDecoupledHWIOTester {
     val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(8.W, 8.BP), 8, Seq(1, 1))
     val device_under_test = Module(new HebbianAccelerator(dut_config))
     val c = device_under_test
@@ -13,12 +13,12 @@ class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
 
     // inputEvent(c.io.in.bits -> 1)
     // outputEvent(c.io.in.bits -> 0)
-    for {
-        i <- 0 to 10
-    } {
-        inputEvent(c.io.in.bits -> i)
-        outputEvent(c.io.out.bits -> (i + 1))
-    }
+    // for {
+    //     i <- 0 to 10
+    // } {
+    //     inputEvent(c.io.in.bits -> i)
+    //     outputEvent(c.io.out.bits -> (i + 1))
+    // }
 
 
 
@@ -32,4 +32,24 @@ class HebbianAcceleratorUnitTester extends OrderedDecoupledHWIOTester {
     // var test_data = data(0).split(",").map {
     //     i => i.toInt
     // } 
+}
+
+// class HebbainAcceleratorPeekPokeTester extends 
+
+class TestDeviceTester(c: TestDevice) extends PeekPokeTester(c) {
+    // println(peek(c.io.out.bits).toString())
+    // poke(c.io.in.bits, 1) // Set the input bits to 1
+    // poke(c.io.out.ready, 0) // Notify dut that output is ready to accept
+    // poke(c.io.in.valid, 1) // Notify dut that input is valid
+    // println(peek(c.io.out.bits).toString())
+    // poke(c.io.out.ready, 1) // We notify dut that the input is valid and this sets off the dut
+    // step(1) // We can advance the clock cycle by a value
+    // println(peek(c.io.out.bits).toString())
+    // step(1)
+    // step(1)
+    // poke(c.io.in.bits, 2)
+    // step(1)
+
+    poke(c.io.in.bits(0), 1)
+    step(1)
 }

@@ -118,7 +118,7 @@ class HebbianLayer[T<:FixedPoint](config: HebbianLayerConfig[T]) extends Module
         output_enable := true.B
     }
 
-    when(output_enable) {
+    when(output_enable && io.out.ready) {
         output_enable := false.B
         io.out.enq(
             mac_accumulator

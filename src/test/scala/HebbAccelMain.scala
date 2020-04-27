@@ -18,9 +18,14 @@ import scala.io.Source
 
 class HebbianMain extends ChiselFlatSpec {
     "a accelerator" should "have its input increased by one" in {
-        assertTesterPasses {
-            new HebbianAcceleratorUnitTester()
-        }
+        // assertTesterPasses {
+            // new TestDeviceTester(new TestDevice)
+            chisel3.iotesters.Driver.execute(Array("--backend-name", "verilator",
+        "--target-dir", "test_run_dir/test", "--top-name", "gcd_make_vcd"), () => new TestDevice) { c =>
+                new TestDeviceTester(c)
+            } should be(true)
+            // new HebbianAcceleratorDecoupledUnitTester()
+        // }
     }
 }
 
