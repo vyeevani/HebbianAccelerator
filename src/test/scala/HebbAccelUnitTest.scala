@@ -41,9 +41,8 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
     // poke(c.io.out.ready, 0) // notify the accelerator that we are ready to accept outputs
 }
 
-// class TestDeviceTester(c: TestDevice) extends PeekPokeTester(c) {
-// class TestDeviceTester extends PeekPokeTester {
-//     c = new TestDevice
+class TestDeviceTester(c: TestDevice) extends PeekPokeTester(c) {
+//     poke(c.io.in.bits, 1)
     // println(peek(c.io.out.bits).toString())
     // poke(c.io.in.bits, 1) // Set the input bits to 1
     // poke(c.io.out.ready, 0) // Notify dut that output is ready to accept
@@ -58,6 +57,11 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
     // step(1)
 
     // for (i in )
-//     poke(c.io.in.bits(0), 1)
-//     step(1)
-// }
+    // poke(c.io.in.bits(0), 1)
+    // step(1)
+
+    poke(c.io.in.bits, 1)       // Set module input
+    poke(c.io.in.valid, 1)      // Notify module that valid is ready
+    poke(c.io.out.ready, 1)    // Notify module that we are ready to recieve output
+    step(10)
+}
