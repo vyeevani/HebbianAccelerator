@@ -3,35 +3,6 @@ package hebbian
 import chisel3._
 import chisel3.experimental._
 import chisel3.util.{DeqIO, EnqIO}
-// import dsptools.numbers._
-
-class TestDevice extends Module {
-    val io = IO(new Bundle {
-        val in = DeqIO(Vec(2, UInt(8.W)))
-        val out = EnqIO(Vec(2, UInt(8.W)))
-    })
-    io.in.nodeq()
-    io.out.noenq()
-
-    when (io.in.valid && io.out.ready) {
-        // io.out.enq(
-        //     io.in.deq() + 1.U(8.W)
-        // )
-    }
-}
-
-// class HebbianAcceleratorCoupled[T<:FixedPoint](config: HebbianAcceleratorConfig[T]) extends Module {
-//     val io = IO(new Bundle {
-//         val in = Vec(config.layer_inputs(0), config.number_type)
-//         val in_valid = 
-//         val out = EnqIO(Vec(config.layer_inputs.last, config.number_type))
-//         val out_valid = 
-//         // Handle weight requests
-//         val weight_req_index = Input(UInt(32.W))
-//         val weight_req_feature = Input(UInt(32.W))
-//         val weight_req_response = Output(config.number_type)
-//     }) 
-// }
 
 class HebbianAcceleratorConfig[T<:FixedPoint] (
     var number_type: T,
