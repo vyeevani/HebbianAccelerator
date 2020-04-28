@@ -1,6 +1,7 @@
 package hebbian 
 
 import chisel3._
+import chisel3.util._
 import chisel3.experimental._
 import chisel3.util.{DeqIO, EnqIO}
 
@@ -24,6 +25,10 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
     io.in.nodeq()
     io.out.noenq()
 
+    // Setup learning rate
+    var primary_learning_rate = 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+    // var secondary_learning_rate := 0.01.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+
     // setup the weights
     var weights = Reg(
         Vec(
@@ -38,13 +43,13 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
     when (reset.toBool) {
         for (i <- 0 to config.layer_output - 1) {
             for (j <- 0 to config.layer_input - 1) {
-                weights(i)(j) := 1.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
-                // weights(i)(j) := 1.0.F
+                weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             }
         }
     }
 
     when (io.in.valid) {
+        // Calculate forward propogation
         var temp_output = Wire(
             Vec(
                 config.layer_output, 
@@ -58,10 +63,52 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
                 (acc, value) => acc + value
             })
         }
-        // temp_output(0) := (1.U).asTypeOf(config.number_type)
-        // temp_output(0) := 1.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
-        // temp_output()
         io.out.enq(temp_output)
+
+        // Calculate main competition winner
+        var activation_to_weight_distances = Wire(
+            Vec(
+                config.layer_output, 
+                config.number_type
+            )
+        )
+        for (i <- 0 to config.layer_output - 1) { 
+            // We don't actually need to compute the square root because if x < y, then sqrt(x) < sqrt(y)
+            activation_to_weight_distances(i) := (io.in.deq(), weights(i)).zipped.map({
+                (x_i, w_i) => x_i - w_i
+            }).reduce({
+                (acc, x_minus_w) => acc + (x_minus_w * x_minus_w)
+            })
+        }
+        var winner_index = Wire(UInt(32.W))
+        var smallest_activation_weight_distance = activation_to_weight_distances.fold(
+            0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        ) ({
+            (v_1, v_2) => (v_1.min(v_2)) 
+        })
+        winner_index := activation_to_weight_distances.indexWhere((x) => (x === smallest_activation_weight_distance))
+
+        // Calculate the scaled weight change
+        // var scaled_weight_change = (io.in.deq(), weights(winner_index)).zipped.map({
+        //     (x, w) => primary_learning_rate * (x - w)
+        // })
+        var scaled_weight_change = Wire(
+            Vec(
+                config.layer_input,
+                config.number_type
+            )
+        )
+        for (i <- 0 to config.layer_input - 1) {
+            scaled_weight_change(i) := primary_learning_rate * (io.in.deq()(i) - weights(winner_index)(i))
+        }
+
+        // update the weight
+        for (i <- 0 to config.layer_input - 1) {
+            weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
+        }
+        // weights(winner_index) := (weights(winner_index), scaled_weight_change).map({
+        //     (w, change) => w + change
+        // })
     }
 }
 
