@@ -38,36 +38,30 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
     when (reset.toBool) {
         for (i <- 0 to config.layer_output - 1) {
             for (j <- 0 to config.layer_input - 1) {
-                weights(i)(j) := (0.U).asTypeOf(config.number_type)
+                weights(i)(j) := 1.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+                // weights(i)(j) := 1.0.F
             }
         }
     }
 
-    var temp_output = Reg(
-        Vec(
-            config.layer_output, 
-            config.number_type
-        )
-    )
-
-    var temp_input = Reg(
-        Vec(
-            config.layer_input, 
-            config.number_type
-        )
-    )
-
     when (io.in.valid) {
-        temp_input := io.in.deq()
-        for (i <- 0 to config.layer_output - 1) {
-            for (j <- 0 to config.layer_input - 1) {
-                temp_output(i) := temp_output(i) + weights(i)(j) * temp_input(j)
-            }
-        }
-        io.out.enq(temp_input)
-        io.out.enq(
-            io.in.deq()
+        var temp_output = Wire(
+            Vec(
+                config.layer_output, 
+                config.number_type
+            )
         )
+        for (i <- 0 to config.layer_output - 1) {
+            temp_output(i) := (io.in.deq(), weights(i)).zipped.map({
+                (a, b) => a * b
+            }).reduce({
+                (acc, value) => acc + value
+            })
+        }
+        // temp_output(0) := (1.U).asTypeOf(config.number_type)
+        // temp_output(0) := 1.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        // temp_output()
+        io.out.enq(temp_output)
     }
 }
 

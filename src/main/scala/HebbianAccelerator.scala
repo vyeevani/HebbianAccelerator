@@ -29,7 +29,7 @@ class TestDevice extends Module {
         )
     }
 
-    when (io.out.ready) {
+    when (io.out.ready && inner.io.out.valid) {
         io.out.enq(
             inner.io.out.deq()
         )
@@ -45,8 +45,36 @@ class TestDeviceInner extends Module {
     io.in.nodeq()
     io.out.noenq()
 
-    when (io.in.valid) {
-        io.out.enq(io.in.deq() + 1.U(8.W))
+    val busy = Reg(Bool())
+    val sum_count_max = 5
+    val sum_count = Reg(UInt(8.W))
+    val sum = Reg(UInt(8.W))
+
+    // Reset
+    when (reset.toBool) {
+        busy := false.B
+        sum_count := sum_count_max.U(8.W)
+        sum := 0.U(8.W)
+    }
+
+    // Go from idle -> busy_(sum_count)
+    when (io.in.valid && !busy) {
+        busy := true.B
+        sum := io.in.deq()
+    }
+
+    // Go from busy_i -> busy_i-1
+    when (busy && sum_count > 0.U) {
+        sum_count := sum_count - 1.U
+        sum := sum + 1.U
+    }
+
+    // Go from busy_0 -> idle
+    when (sum_count === 0.U) {
+        busy := false.B
+        io.out.enq(sum)
+        sum_count := sum_count_max.U(8.W)
+        sum := 0.U(8.W)
     }
 }
 
