@@ -110,6 +110,9 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
     val io = IO(new Bundle {
         val in = DeqIO(Vec(config.layer_input, config.number_type))
         val out = EnqIO(Vec(config.layer_output, config.number_type))
+        val weight_req_index = Input(UInt(32.W))
+        val weight_req_feature = Input(UInt(32.W))
+        val weight_req_response = Output(config.number_type)
     })
 
     io.in.nodeq()
@@ -129,11 +132,13 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         Vec(
             config.layer_output, 
             Vec(
-                config.layer_output, 
+                config.layer_input, 
                 config.number_type
             )
         )
     )
+
+    io.weight_req_response := weights(io.weight_req_index)(io.weight_req_feature)
 
     val input_weight_distance = Reg(
         Vec(
@@ -141,6 +146,22 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
             config.number_type
         )
     )
+
+    when (reset.toBool) {
+        for (i <- 0 to config.layer_input - 1) {
+            input(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        }
+
+        for (i <- 0 to config.layer_output - 1) {
+            for (j <- 0 to config.layer_input - 1) {
+                weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            }
+        }
+
+        for (i <- 0 to config.layer_output - 1) {
+            input_weight_distance(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        }
+    }
 
     val idle::norm::winner::update::Nil = Enum(4)
     val state = RegInit(idle)
