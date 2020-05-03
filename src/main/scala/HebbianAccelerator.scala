@@ -4,12 +4,6 @@ import chisel3._
 import chisel3.experimental._
 import chisel3.util.{DeqIO, EnqIO}
 
-class HebbianAcceleratorConfig[T<:FixedPoint] (
-    var number_type: T,
-    var layer_count: Int,
-    var layer_inputs: Seq[Int]
-) 
-
 class TestDevice extends Module {
     val io = IO(new Bundle {
         val in = DeqIO(UInt(8.W))
@@ -78,14 +72,21 @@ class TestDeviceInner extends Module {
     }
 }
 
+class HebbianAcceleratorConfig[T<:FixedPoint] (
+    var number_type: T,
+    var layer_count: Int,
+    var layer_inputs: Seq[Int]
+) 
+
 class HebbianAccelerator[T<:FixedPoint](config: HebbianAcceleratorConfig[T]) extends Module {
     val io = IO(new Bundle {
         val in = DeqIO(Vec(config.layer_inputs(0), config.number_type))
         val out = EnqIO(Vec(config.layer_inputs.last, config.number_type))
         // Handle weight requests
-        // val weight_req_index = Input(UInt(32.W))
-        // val weight_req_feature = Input(UInt(32.W))
-        // val weight_req_response = Output(config.number_type)
+        val layer_index = Input(UInt(32.W))
+        val weight_req_index = Input(UInt(32.W))
+        val weight_req_feature = Input(UInt(32.W))
+        val weight_req_response = Output(config.number_type)
     })
     
     // These ensure all output signals are driven.

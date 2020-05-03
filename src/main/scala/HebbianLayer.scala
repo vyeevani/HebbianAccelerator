@@ -88,10 +88,7 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
         })
         winner_index := activation_to_weight_distances.indexWhere((x) => (x === smallest_activation_weight_distance))
 
-        // Calculate the scaled weight change
-        // var scaled_weight_change = (io.in.deq(), weights(winner_index)).zipped.map({
-        //     (x, w) => primary_learning_rate * (x - w)
-        // })
+        // // Calculate the scaled weight change
         var scaled_weight_change = Wire(
             Vec(
                 config.layer_input,
@@ -102,13 +99,10 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
             scaled_weight_change(i) := primary_learning_rate * (io.in.deq()(i) - weights(winner_index)(i))
         }
 
-        // update the weight
-        for (i <- 0 to config.layer_input - 1) {
-            weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
-        }
-        // weights(winner_index) := (weights(winner_index), scaled_weight_change).map({
-        //     (w, change) => w + change
-        // })
+        // // update the weight
+        // for (i <- 0 to config.layer_input - 1) {
+        //     weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
+        // }
     }
 }
 
