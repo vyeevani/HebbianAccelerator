@@ -21,7 +21,7 @@ class HebbianMain extends ChiselFlatSpec {
     //         } should be(true)
     // }
 
-    val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(32.W, 16.BP), 8, Seq(10, 1))
+    val dut_config = new HebbianAcceleratorConfig[FixedPoint](FixedPoint(32.W, 16.BP), 8, Seq(784, 10))
     "a accelerator" should "have its input increased by one" in {
         chisel3.iotesters.Driver.execute(
             Array(

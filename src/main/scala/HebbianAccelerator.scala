@@ -95,13 +95,20 @@ class HebbianAccelerator[T<:FixedPoint](config: HebbianAcceleratorConfig[T]) ext
     // Generates all the layer hardware
     val layers = Seq.tabulate(config.layer_inputs.length - 1) {
         i => Module(
-            new HebbianLayerFullyParallel(
+            new HebbianLayerFullySequentail(
                 new HebbianLayerConfig(
                     config.number_type, 
                     config.layer_inputs(i), 
                     config.layer_inputs(i + 1)
                 )
             )
+            // new HebbianLayerFullyParallel(
+            //     new HebbianLayerConfig(
+            //         config.number_type, 
+            //         config.layer_inputs(i), 
+            //         config.layer_inputs(i + 1)
+            //     )
+            // )
         )
     }
 
