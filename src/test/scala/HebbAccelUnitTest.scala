@@ -20,7 +20,7 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
 
     // This is the proper way to split up a specific index of the data
 
-    for (i <- 0 to 1) {
+    for (i <- 0 to 1000) {
         var test_data = data(i).split(",").map {
             i => i.toInt
         } 
