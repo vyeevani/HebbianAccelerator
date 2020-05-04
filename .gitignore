@@ -1,6 +1,7 @@
 ### Hebbian Accelerator Specific stuff
 datasets/*
 *.pem
+output.txt
 
 ### Project Specific stuff
 test_run_dir/*

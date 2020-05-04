@@ -42,7 +42,4 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
         weight_responses += peek(c.io.weight_req_response)
     }
     println(weight_responses.toString)
-
-    // println(String.join(",", weight_responses))
-    // val string = new String()
 }
