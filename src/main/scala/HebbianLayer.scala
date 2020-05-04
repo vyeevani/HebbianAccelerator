@@ -147,8 +147,6 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         )
     )
 
-    // val difference_index = Reg(UInt(32.W))
-
     when (reset.toBool) {
         for (i <- 0 to config.layer_input - 1) {
             input(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
@@ -156,7 +154,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
 
         for (i <- 0 to config.layer_output - 1) {
             for (j <- 0 to config.layer_input - 1) {
-                weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+                weights(i)(j) := 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             }
         }
 
