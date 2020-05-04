@@ -147,6 +147,8 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         )
     )
 
+    // val difference_index = Reg(UInt(32.W))
+
     when (reset.toBool) {
         for (i <- 0 to config.layer_input - 1) {
             input(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
@@ -172,7 +174,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         input := io.in.deq()
     }
     
-    val difference_index = Reg(UInt(32.W))
+    val difference_index = RegInit(UInt(32.W), 0.U)
     // We do the difference of the difference between the weight and the input in a sequential fashion here
     when(state === norm) {
         difference_index := difference_index + 1.U
@@ -188,9 +190,9 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         }
     }
 
-    val winner_curr_index = Reg(UInt(32.W))
-    val winner_best_index = Reg(UInt(32.W))
-    val winner_best_value = Reg(config.number_type)
+    val winner_curr_index = RegInit(UInt(32.W), 0.U)
+    val winner_best_index = RegInit(UInt(32.W), 0.U)
+    val winner_best_value = RegInit(config.number_type, 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint))
     when(state === winner) {
         winner_curr_index := winner_curr_index + 1.U
         var input_weight_feature_norm = input_weight_distance(winner_curr_index)
@@ -209,7 +211,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         }
     }
 
-    val weight_update_index = Reg(UInt(32.W))
+    val weight_update_index = RegInit(UInt(32.W), 0.U)
     when(state === update) {
         // find the scaled weight change
         weight_update_index := weight_update_index + 1.U
