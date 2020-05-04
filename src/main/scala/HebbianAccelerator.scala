@@ -6,7 +6,6 @@ import chisel3.util.{DeqIO, EnqIO}
 
 class HebbianAcceleratorConfig[T<:FixedPoint] (
     var number_type: T,
-    var layer_count: Int,
     var layer_inputs: Seq[Int]
 ) 
 
