@@ -70,7 +70,7 @@ class HebbianAccelerator[T<:FixedPoint](config: HebbianAcceleratorConfig[T]) ext
     }
 
     // Wire up the last layer to the accelerator output
-    when (io.out.ready) {
+    when (io.out.ready && layers.last.io.out.valid) {
         io.out.enq(
             layers.last.io.out.deq()
         )
