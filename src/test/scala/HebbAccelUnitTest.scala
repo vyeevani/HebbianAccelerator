@@ -11,14 +11,14 @@ import scala.collection.mutable.ArrayBuffer
 
 class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) extends DspTester(c) {
 
-    var src = Source.fromFile("/Users/vineethyeevani/Desktop/hebbian_accelerator/datasets/mnist_train.csv")
+    var src = Source.fromFile("datasets/mnist_train.csv")
     // We will only split this data and convert into integers during testing in order to avoid memory overflow issues
     var data = src.getLines.toList
     data = data.drop(1)
 
     // This is the proper way to split up a specific index of the data
 
-    for (i <- 0 to 1) {
+    for (i <- 0 to 100) {
         var test_data = data(i).split(",").map {
             i => i.toInt
         } 
