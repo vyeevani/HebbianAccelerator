@@ -18,29 +18,21 @@ import scala.io.Source
 // } 
 
 class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) extends DspTester(c) {
-    // for (i <- 0 to 9) {
-    //     poke(c.io.in.bits(i), 1.0)
-    // }
 
-    
+    var src = Source.fromFile("/Users/vineethyeevani/Desktop/hebbian_accelerator/datasets/mnist_train.csv")
+    // We will only split this data and convert into integers during testing in order to avoid memory overflow issues
+    var data = src.getLines.toList
+    data = data.drop(1)
 
-    for (i <- 0 to 20) {
-        if (i % 2 == 0) {
-            for (i <- 0 to 5) {
-                poke(c.io.in.bits(i), 1.0)
-            }
-            for (i <- 6 to 9) {
-                poke(c.io.in.bits(i), 0.0)
-            }
-        } else {
-            for (i <- 0 to 5) {
-                poke(c.io.in.bits(i), 0.0)
-            }
-            for (i <- 6 to 9) {
-                poke(c.io.in.bits(i), 1.0)
-            }
+    // This is the proper way to split up a specific index of the data
+
+    for (i <- 0 to 1) {
+        var test_data = data(i).split(",").map {
+            i => i.toInt
+        } 
+        for (j <- 0 to 783) {
+            poke(c.io.in.bits(j), test_data(j).toDouble/255)
         }
-
         poke(c.io.in.valid, 1) // notify that the input is valid
         poke(c.io.out.ready, 1) // notify that we are ready to recieve output
         step(1)
@@ -50,15 +42,10 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
         }
         step(1)
     }
-    for (i <- 0 to 10) {
+
+    for (i <- 0 to 784) {
         poke(c.io.layer_index, 0)
         poke(c.io.weight_req_index, 0)
-        poke(c.io.weight_req_feature, i)
-        peek(c.io.weight_req_response)
-    }
-    for (i <- 0 to 10) {
-        poke(c.io.layer_index, 0)
-        poke(c.io.weight_req_index, 1)
         poke(c.io.weight_req_feature, i)
         peek(c.io.weight_req_response)
     }
