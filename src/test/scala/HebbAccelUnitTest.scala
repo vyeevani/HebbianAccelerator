@@ -3,19 +3,11 @@ package hebbian
 import chisel3._
 import chisel3.experimental._
 import chisel3.iotesters.{OrderedDecoupledHWIOTester, PeekPokeTester}
+
 import dsptools._
+
 import scala.io.Source
-
-// Load the testing data
-// var src = Source.fromFile("/Users/vineethyeevani/Desktop/hebbian_accelerator/datasets/mnist_train.csv")
-// // We will only split this data and convert into integers during testing in order to avoid memory overflow issues
-// var data = src.getLines.toList
-// data = data.drop(1)
-
-// This is the proper way to split up a specific index of the data
-// var test_data = data(0).split(",").map {
-//     i => i.toInt
-// } 
+import scala.collection.mutable.ArrayBuffer
 
 class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) extends DspTester(c) {
 
@@ -42,11 +34,15 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
         }
         step(1)
     }
-
-    for (i <- 0 to 784) {
+    val weight_responses = new ArrayBuffer[Double]
+    for (i <- 0 to 783) {
         poke(c.io.layer_index, 0)
         poke(c.io.weight_req_index, 0)
         poke(c.io.weight_req_feature, i)
-        peek(c.io.weight_req_response)
+        weight_responses += peek(c.io.weight_req_response)
     }
+    println(weight_responses.toString)
+
+    // println(String.join(",", weight_responses))
+    // val string = new String()
 }
