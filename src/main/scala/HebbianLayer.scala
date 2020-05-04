@@ -118,7 +118,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
     io.in.nodeq()
     io.out.noenq()
 
-    var learning_rate = 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+    var learning_rate = 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
 
 
     val input = Reg(
@@ -154,6 +154,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
 
         for (i <- 0 to config.layer_output - 1) {
             for (j <- 0 to config.layer_input - 1) {
+                // weights(i)(j) := j.toDouble.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
                 weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             }
         }
@@ -197,12 +198,15 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
         // When starting this state we consider the first index as the best
         // Or if the current neuron is better than the prior best
         // we update the neuron
-        when (winner_curr_index === 0.U || input_weight_feature_norm < winner_best_value) {
+        when (winner_curr_index === 0.U || input_weight_feature_norm <= winner_best_value) {
             winner_best_value := input_weight_feature_norm
             winner_best_index := winner_curr_index
         } 
         // Transition to UPDATE state and clean up the indicies used in this stage
         when (winner_curr_index === (config.layer_output - 1).U) {
+            for (i <- 0 to config.layer_output - 1) {
+                input_weight_distance(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            }
             winner_curr_index := 0.U
             winner_best_value := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             state := update
@@ -213,7 +217,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
     when(state === update) {
         // find the scaled weight change
         weight_update_index := weight_update_index + 1.U
-        weights(winner_best_index)(weight_update_index) := learning_rate * (input(weight_update_index) - weights(winner_best_index)(weight_update_index))
+        weights(winner_best_index)(weight_update_index) := weights(winner_best_index)(weight_update_index) + learning_rate * (input(weight_update_index) - weights(winner_best_index)(weight_update_index))
         when (weight_update_index === (config.layer_input - 1).U) {
             weight_update_index := 0.U
             state := idle
@@ -226,11 +230,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
                 )
             )
             for (i <- 0 to config.layer_output - 1) {
-                temp_output(i) := (io.in.deq(), weights(i)).zipped.map({
-                    (a, b) => a * b
-                }).reduce({
-                    (acc, value) => acc + value
-                })
+                temp_output(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             }
             io.out.enq(temp_output)
         }

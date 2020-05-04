@@ -19,8 +19,12 @@ import scala.io.Source
 
 class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) extends DspTester(c) {
     // Setup the inputs to the system
+    // for (i <- 0 to 9) {
+    //     poke(c.io.in.bits(i), i.toDouble)
+    // }
+
     for (i <- 0 to 9) {
-        poke(c.io.in.bits(i), i.toDouble)
+        poke(c.io.in.bits(i), 1.0)
     }
 
     poke(c.io.layer_index, 0)
@@ -29,13 +33,9 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
 
     poke(c.io.in.valid, 1) // notify that the input is valid
     poke(c.io.out.ready, 1) // notify that we are ready to recieve output
-    step(1)
-    poke(c.io.in.valid, 0)
-    // step(29)
 
-    for (i <- 0 to 200) {
-        step(1)
+    for (i <- 0 to 100) {
+        step(21)
         peek(c.io.weight_req_response)
-        poke(c.io.in.valid, 0)
     }
 }
