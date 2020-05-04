@@ -2,6 +2,7 @@
 datasets/*
 *.pem
 output.txt
+weights.txt
 
 ### Project Specific stuff
 test_run_dir/*

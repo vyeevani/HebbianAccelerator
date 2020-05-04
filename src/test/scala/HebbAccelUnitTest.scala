@@ -9,6 +9,8 @@ import dsptools._
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 
+import java.io._
+
 class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) extends DspTester(c) {
 
     var src = Source.fromFile("datasets/mnist_train.csv")
@@ -18,7 +20,7 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
 
     // This is the proper way to split up a specific index of the data
 
-    for (i <- 0 to 100) {
+    for (i <- 0 to 1) {
         var test_data = data(i).split(",").map {
             i => i.toInt
         } 
@@ -34,12 +36,26 @@ class HebbainAcceleratorPeekPokeTester[T<:FixedPoint](c: HebbianAccelerator[T]) 
         }
         step(1)
     }
-    val weight_responses = new ArrayBuffer[Double]
-    for (i <- 0 to 783) {
-        poke(c.io.layer_index, 0)
-        poke(c.io.weight_req_index, 0)
-        poke(c.io.weight_req_feature, i)
-        weight_responses += peek(c.io.weight_req_response)
+
+    // Save weights to file
+    var file = new File("weights.txt");
+    if (!file.exists()) {
+        file.createNewFile();
     }
-    println(weight_responses.toString)
+    var fw = new FileWriter(file);
+    var bw = new BufferedWriter(fw);
+
+    for (weight_index <- 0 to 1) {
+        val weight_responses = new ArrayBuffer[Double]
+        for (weight_feature <- 0 to 783) {
+            poke(c.io.layer_index, 0)
+            poke(c.io.weight_req_index, weight_index)
+            poke(c.io.weight_req_feature, weight_feature)
+            weight_responses += peek(c.io.weight_req_response)
+        }
+        println(weight_responses.toString)
+        bw.write(weight_responses.toString)
+    }
+
+    bw.close()
 }
