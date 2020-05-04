@@ -100,9 +100,9 @@ class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) ex
         }
 
         // // update the weight
-        // for (i <- 0 to config.layer_input - 1) {
-        //     weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
-        // }
+        for (i <- 0 to config.layer_input - 1) {
+            weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
+        }
     }
 }
 
@@ -118,7 +118,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
     io.in.nodeq()
     io.out.noenq()
 
-    var learning_rate = 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+    var learning_rate = 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
 
 
     val input = Reg(
@@ -202,7 +202,7 @@ class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) 
             winner_best_index := winner_curr_index
         } 
         // Transition to UPDATE state and clean up the indicies used in this stage
-        when (difference_index === config.layer_output.U) {
+        when (winner_curr_index === config.layer_output.U) {
             winner_curr_index := 0.U
             winner_best_value := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             state := update
