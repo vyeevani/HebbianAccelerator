@@ -1,6 +1,7 @@
 package hebbian 
 
 import chisel3._
+import chisel3.util._
 import chisel3.experimental._
 import chisel3.util.{DeqIO, EnqIO}
 
@@ -15,32 +16,18 @@ class HebbianLayerConfig[T<:FixedPoint] (
     var layer_output: Int
 )
 
-/* 
-This class contains the winner take all and loser take winner hebbian competitive
-learning method designed to bootstrap zero weights rapidly. 
-*/
-class HebbianLayer[T<:FixedPoint](config: HebbianLayerConfig[T]) extends Module
-{
+class HebbianLayerFullyParallel[T<:FixedPoint](config: HebbianLayerConfig[T]) extends Module {
     val io = IO(new Bundle {
         val in = DeqIO(Vec(config.layer_input, config.number_type))
         val out = EnqIO(Vec(config.layer_output, config.number_type))
-        // Handle weight requests
-        val weight_req_index = Input(UInt(32.W))
-        val weight_req_feature = Input(UInt(32.W))
-        val weight_req_response = Output(config.number_type)
     })
 
-    // These ensure all output signals are driven.
     io.in.nodeq()
     io.out.noenq()
 
-    // setup the input saving mechanism
-    var inputs = Reg(
-        Vec(
-            config.layer_input, 
-            config.number_type
-        )
-    )
+    // Setup learning rate
+    var primary_learning_rate = 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+    // var secondary_learning_rate := 0.01.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
 
     // setup the weights
     var weights = Reg(
@@ -53,75 +40,199 @@ class HebbianLayer[T<:FixedPoint](config: HebbianLayerConfig[T]) extends Module
         )
     )
 
-    // Counter that increases every cycle
-    val weight_feature_index = Reg(UInt(32.W))
+    when (reset.toBool) {
+        for (i <- 0 to config.layer_output - 1) {
+            for (j <- 0 to config.layer_input - 1) {
+                weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            }
+        }
+    }
 
-    // Accumulator for MAC operation
-    val mac_accumulator = Reg(
+    when (io.in.valid) {
+        // Calculate forward propogation
+        var temp_output = Wire(
+            Vec(
+                config.layer_output, 
+                config.number_type
+            )
+        )
+        for (i <- 0 to config.layer_output - 1) {
+            temp_output(i) := (io.in.deq(), weights(i)).zipped.map({
+                (a, b) => a * b
+            }).reduce({
+                (acc, value) => acc + value
+            })
+        }
+        io.out.enq(temp_output)
+
+        // Calculate main competition winner
+        var activation_to_weight_distances = Wire(
+            Vec(
+                config.layer_output, 
+                config.number_type
+            )
+        )
+        for (i <- 0 to config.layer_output - 1) { 
+            // We don't actually need to compute the square root because if x < y, then sqrt(x) < sqrt(y)
+            activation_to_weight_distances(i) := (io.in.deq(), weights(i)).zipped.map({
+                (x_i, w_i) => x_i - w_i
+            }).reduce({
+                (acc, x_minus_w) => acc + (x_minus_w * x_minus_w)
+            })
+        }
+        var winner_index = Wire(UInt(32.W))
+        var smallest_activation_weight_distance = activation_to_weight_distances.fold(
+            0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        ) ({
+            (v_1, v_2) => (v_1.min(v_2)) 
+        })
+        winner_index := activation_to_weight_distances.indexWhere((x) => (x === smallest_activation_weight_distance))
+
+        // // Calculate the scaled weight change
+        var scaled_weight_change = Wire(
+            Vec(
+                config.layer_input,
+                config.number_type
+            )
+        )
+        for (i <- 0 to config.layer_input - 1) {
+            scaled_weight_change(i) := primary_learning_rate * (io.in.deq()(i) - weights(winner_index)(i))
+        }
+
+        // // update the weight
+        for (i <- 0 to config.layer_input - 1) {
+            weights(winner_index)(i) := weights(winner_index)(i) + scaled_weight_change(i)
+        }
+    }
+}
+
+class HebbianLayerFullySequentail[T<:FixedPoint](config: HebbianLayerConfig[T]) extends Module {
+    val io = IO(new Bundle {
+        val in = DeqIO(Vec(config.layer_input, config.number_type))
+        val out = EnqIO(Vec(config.layer_output, config.number_type))
+        val weight_req_index = Input(UInt(32.W))
+        val weight_req_feature = Input(UInt(32.W))
+        val weight_req_response = Output(config.number_type)
+    })
+
+    io.in.nodeq()
+    io.out.noenq()
+
+    var learning_rate = 0.1.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+
+
+    val input = Reg(
         Vec(
-            config.layer_output, 
+            config.layer_input, 
             config.number_type
         )
     )
 
-    // These control the MAC state machine
-    val input_disable = Reg(Bool())
-    val output_enable = Reg(Bool())
+    val weights = Reg(
+        Vec(
+            config.layer_output, 
+            Vec(
+                config.layer_input, 
+                config.number_type
+            )
+        )
+    )
 
-    // Resets all the registers to 0
-    when(reset.toBool) {
-        input_disable := false.B
-        output_enable := false.B
-        weight_feature_index := 0.U
+    io.weight_req_response := weights(io.weight_req_index)(io.weight_req_feature)
+
+    val input_weight_distance = Reg(
+        Vec(
+            config.layer_output,
+            config.number_type
+        )
+    )
+
+    when (reset.toBool) {
+        for (i <- 0 to config.layer_input - 1) {
+            input(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+        }
 
         for (i <- 0 to config.layer_output - 1) {
             for (j <- 0 to config.layer_input - 1) {
-                weights(i)(j) := (0.U).asTypeOf(config.number_type)
+                // weights(i)(j) := j.toDouble.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+                weights(i)(j) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
             }
         }
-        
+
         for (i <- 0 to config.layer_output - 1) {
-            mac_accumulator(i) := (0.U).asTypeOf(config.number_type)
-        }
-        
-        for (i <- 0 to config.layer_input - 1) {
-            inputs(i) := (0.U).asTypeOf(config.number_type)
+            input_weight_distance(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
         }
     }
 
-    // Temporary input wire to save the dequed inputs 
-    var temp_input_wire = Wire(
-        Vec(
-            config.layer_input, 
-            config.number_type   
-        )
-    )
-    // Save the weights of the input only if we are not busy
-    when(io.in.valid && !input_disable) {
-        temp_input_wire := io.in.deq()
-        for (i <- 0 to config.layer_input - 1) {
-            inputs(i) := temp_input_wire(i)
+    val idle::norm::winner::update::Nil = Enum(4)
+    val state = RegInit(idle)
+    // When the input is valid we switch from the idle state into the NORM state
+    when(io.in.valid && state === idle) {
+        state := norm
+        // difference_index := 0.U
+        input := io.in.deq()
+    }
+    
+    val difference_index = RegInit(UInt(32.W), 0.U)
+    // We do the difference of the difference between the weight and the input in a sequential fashion here
+    when(state === norm) {
+        difference_index := difference_index + 1.U
+
+        for (i <- 0 to (config.layer_output - 1)) {
+            var input_weight_feature_difference = weights(i)(difference_index) - input(difference_index)
+            input_weight_distance(i) := input_weight_distance(i) + input_weight_feature_difference * input_weight_feature_difference
         }
-        input_disable := true.B // we are now in the busy state
-    }
-
-    // This is the basic forward propogation
-    when(input_disable) {
-        for (i <- 0 to config.layer_output - 1) {
-            mac_accumulator(i) := mac_accumulator(i) + inputs(weight_feature_index) * weights(i)(weight_feature_index)
+        // transition from the norm calculation state to the WINNER index calculator
+        when(difference_index === (config.layer_input - 1).U) {
+            difference_index := 0.U
+            state := winner
         }
-        weight_feature_index := weight_feature_index + 1.U(32.W)
     }
 
-    when(weight_feature_index === (config.layer_output - 1).U(32.W)) {
-        input_disable := false.B
-        output_enable := true.B
+    val winner_curr_index = RegInit(UInt(32.W), 0.U)
+    val winner_best_index = RegInit(UInt(32.W), 0.U)
+    val winner_best_value = RegInit(config.number_type, 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint))
+    when(state === winner) {
+        winner_curr_index := winner_curr_index + 1.U
+        var input_weight_feature_norm = input_weight_distance(winner_curr_index)
+        // When starting this state we consider the first index as the best
+        // Or if the current neuron is better than the prior best
+        // we update the neuron
+        when (winner_curr_index === 0.U || input_weight_feature_norm <= winner_best_value) {
+            winner_best_value := input_weight_feature_norm
+            winner_best_index := winner_curr_index
+        } 
+        // Transition to UPDATE state and clean up the indicies used in this stage
+        when (winner_curr_index === (config.layer_output - 1).U) {
+            for (i <- 0 to config.layer_output - 1) {
+                input_weight_distance(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            }
+            winner_curr_index := 0.U
+            winner_best_value := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            state := update
+        }
     }
 
-    when(output_enable) {
-        output_enable := false.B
-        io.out.enq(
-            mac_accumulator
-        )
+    val weight_update_index = RegInit(UInt(32.W), 0.U)
+    when(state === update) {
+        // find the scaled weight change
+        weight_update_index := weight_update_index + 1.U
+        weights(winner_best_index)(weight_update_index) := weights(winner_best_index)(weight_update_index) + learning_rate * (input(weight_update_index) - weights(winner_best_index)(weight_update_index))
+        when (weight_update_index === (config.layer_input - 1).U) {
+            weight_update_index := 0.U
+            state := idle
+
+            // Fake output propogation for ready output
+            var temp_output = Wire(
+                Vec(
+                    config.layer_output, 
+                    config.number_type
+                )
+            )
+            for (i <- 0 to config.layer_output - 1) {
+                temp_output(i) := 0.0.F((config.number_type.getWidth).W, config.number_type.binaryPoint)
+            }
+            io.out.enq(temp_output)
+        }
     }
 }
